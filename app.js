@@ -125,6 +125,7 @@ function NoticeBubble({
   text
 }) {
   return /*#__PURE__*/React.createElement("div", {
+    className: "gom-bubble",
     style: {
       margin: "4px auto 12px",
       maxWidth: "92%",
@@ -218,6 +219,95 @@ ErrorBoundary.getDerivedStateFromError = function () {
   };
 };
 
+// ─── SMOOTH MOTION HELPERS ────────────────────────────────────────────────────
+const TAB_ORDER = ["home", "programs", "tools", "learn", "support"];
+let GOM_MOTION = {
+  id: 0,
+  dir: "none"
+}; // which way the current screen slides in (set by App)
+let GOM_LAST_NAV_TAB = null;
+function gomReducedMotion() {
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch (e) {
+    return false;
+  }
+}
+function gomHaptic(ms) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  } catch (e) {}
+}
+// Pictures fade in the first time they load (like photos in a feed). Repeat views show instantly.
+(function () {
+  const seen = {};
+  document.addEventListener("load", function (e) {
+    const t = e.target;
+    if (!t || t.tagName !== "IMG" || t.closest && t.closest(".gom-ghost")) return;
+    const src = t.currentSrc || t.src;
+    if (seen[src]) return;
+    seen[src] = true;
+    t.classList.add("gom-img-in");
+  }, true);
+})();
+// iPhone style screen change: keep a still copy of the screen you are leaving, so the new
+// screen can slide over it (opening) or the old one can slide away on top of it (going back).
+function gomSnapshot(dir) {
+  try {
+    document.querySelectorAll(".gom-ghost-clip").forEach(n => n.remove());
+    if (dir !== "push" && dir !== "pop" || gomReducedMotion()) return;
+    const cur = document.querySelector(".gom-screen");
+    if (!cur) return;
+    const shell = cur.parentNode.getBoundingClientRect();
+    const r = cur.getBoundingClientRect();
+    const src = cur.querySelectorAll("*");
+    const tops = [];
+    for (let i = 0; i < src.length; i++) if (src[i].scrollTop || src[i].scrollLeft) tops.push([i, src[i].scrollTop, src[i].scrollLeft]);
+    const clip = document.createElement("div");
+    clip.className = "gom-ghost-clip";
+    clip.setAttribute("aria-hidden", "true");
+    Object.assign(clip.style, {
+      position: "fixed",
+      left: shell.left + "px",
+      top: shell.top + "px",
+      width: shell.width + "px",
+      height: shell.height + "px",
+      overflow: "hidden",
+      pointerEvents: "none",
+      zIndex: dir === "pop" ? "3" : "0"
+    });
+    const g = cur.cloneNode(true);
+    g.className = "gom-ghost gom-ghost-" + dir;
+    Object.assign(g.style, {
+      position: "absolute",
+      left: r.left - shell.left + "px",
+      top: r.top - shell.top + "px",
+      width: r.width + "px",
+      height: r.height + "px",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      background: "#F7F3ED"
+    });
+    g.querySelectorAll("img").forEach(im => im.classList.remove("gom-img-in"));
+    clip.appendChild(g);
+    if (dir === "push") {
+      const sh = document.createElement("div");
+      sh.className = "gom-shade";
+      g.appendChild(sh);
+    }
+    document.body.appendChild(clip);
+    const dst = g.querySelectorAll("*");
+    tops.forEach(([i, t, l]) => {
+      if (dst[i]) {
+        dst[i].scrollTop = t;
+        dst[i].scrollLeft = l;
+      }
+    });
+    setTimeout(() => clip.remove(), 480);
+  } catch (e) {}
+}
+
 // ─── COLOUR PALETTE ───────────────────────────────────────────────────────────
 const C = {
   forest: "#23443B",
@@ -248,6 +338,33 @@ const G = `
   @keyframes bOut{from{transform:scale(1);opacity:1}to{transform:scale(.52);opacity:.6}}
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
   @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  @keyframes gomSlideIn{from{transform:translate3d(100%,0,0)}to{transform:none}}
+  @keyframes gomUnderIn{from{transform:translate3d(-28%,0,0)}to{transform:none}}
+  @keyframes gomUnderOut{to{transform:translate3d(-28%,0,0)}}
+  @keyframes gomOverOut{to{transform:translate3d(100%,0,0)}}
+  @keyframes gomShade{from{opacity:0}to{opacity:1}}
+  @keyframes gomFade{from{opacity:0}to{opacity:1}}
+  @keyframes gomRise{from{opacity:0;transform:translate3d(0,16px,0)}to{opacity:1;transform:none}}
+  @keyframes gomDrop{from{opacity:0;transform:translate3d(0,-8px,0)}to{opacity:1;transform:none}}
+  @keyframes gomBubble{from{opacity:0;transform:translate3d(0,10px,0) scale(.96)}to{opacity:1;transform:none}}
+  @keyframes gomIcon{0%{transform:scale(.82)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
+  @keyframes gomImg{from{opacity:0}}
+  .gom-screen{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;z-index:1;}
+  .gom-push{animation:gomSlideIn .42s cubic-bezier(.2,.9,.22,1) both;background:#F7F3ED;box-shadow:-12px 0 32px rgba(0,0,0,.14);}
+  .gom-pop{animation:gomUnderIn .36s cubic-bezier(.2,.9,.22,1) both;}
+  .gom-fade{animation:gomFade .24s ease-out both;}
+  .gom-ghost-push{animation:gomUnderOut .42s cubic-bezier(.2,.9,.22,1) both;}
+  .gom-ghost-pop{animation:gomOverOut .36s cubic-bezier(.3,.6,.25,1) both;box-shadow:-12px 0 32px rgba(0,0,0,.14);}
+  .gom-shade{position:absolute;inset:0;background:rgba(20,35,30,.10);pointer-events:none;animation:gomShade .42s ease-out both;}
+  .gom-stagger > *{animation:gomRise .42s cubic-bezier(.2,.9,.22,1) backwards;}
+  .gom-stagger > *:nth-child(2){animation-delay:.04s}.gom-stagger > *:nth-child(3){animation-delay:.08s}.gom-stagger > *:nth-child(4){animation-delay:.12s}.gom-stagger > *:nth-child(5){animation-delay:.16s}.gom-stagger > *:nth-child(6){animation-delay:.2s}.gom-stagger > *:nth-child(n+7){animation-delay:.24s}
+  .gom-drop{animation:gomDrop .3s cubic-bezier(.2,.9,.22,1) both;}
+  .gom-bubble{animation:gomBubble .3s cubic-bezier(.2,.9,.22,1) both;}
+  .gom-icon-on{animation:gomIcon .38s cubic-bezier(.3,1.4,.5,1);}
+  .gom-img-in{animation:gomImg .45s ease-out;}
+  button{transition:transform .16s cubic-bezier(.2,.9,.22,1);touch-action:manipulation;}
+  button:not(:disabled):active{transform:scale(.97);}
+  @media (prefers-reduced-motion: reduce){.gom-push,.gom-pop,.gom-fade,.gom-ghost-push,.gom-ghost-pop,.gom-shade,.gom-stagger > *,.gom-drop,.gom-bubble,.gom-icon-on,.gom-img-in{animation:none !important;}button:not(:disabled):active{transform:none;}}
   
 
 `;
@@ -1771,6 +1888,7 @@ function ReflectionChat({
       fontWeight: "bold"
     }
   }, open ? "−" : "+")), open && /*#__PURE__*/React.createElement("div", {
+    className: "gom-drop",
     style: {
       background: C.white,
       padding: "12px 14px"
@@ -1887,6 +2005,7 @@ function ReflectionChat({
     text: m.t
   }) : /*#__PURE__*/React.createElement("div", {
     key: i,
+    className: "gom-bubble",
     style: {
       marginBottom: 10
     }
@@ -3131,6 +3250,7 @@ function Chat() {
     text: m.t
   }) : /*#__PURE__*/React.createElement("div", {
     key: i,
+    className: "gom-bubble",
     style: {
       display: "flex",
       justifyContent: m.r === "u" ? "flex-end" : "flex-start",
@@ -3678,7 +3798,10 @@ function Shell({
       boxShadow: "0 0 60px rgba(0,0,0,.15)",
       position: "relative"
     }
-  }, /*#__PURE__*/React.createElement("style", null, G), /*#__PURE__*/React.createElement(BioBg, null), children);
+  }, /*#__PURE__*/React.createElement("style", null, G), /*#__PURE__*/React.createElement(BioBg, null), /*#__PURE__*/React.createElement("div", {
+    key: GOM_MOTION.id,
+    className: "gom-screen gom-" + GOM_MOTION.dir
+  }, children));
 }
 function Hdr({
   title,
@@ -3728,7 +3851,9 @@ function Hdr({
 }
 function Nav({
   tab,
-  setTab
+  setTab,
+  onReselect,
+  api
 }) {
   const items = [{
     id: "home",
@@ -3751,48 +3876,372 @@ function Nav({
     l: "Support",
     ic: Ico.heart
   }];
+  const idx = TAB_ORDER.indexOf(tab);
+  const changed = GOM_LAST_NAV_TAB !== null && GOM_LAST_NAV_TAB !== tab;
+  GOM_LAST_NAV_TAB = tab;
+  const barRef = useRef(null);
+  const pillRef = useRef(null);
+  const placed = useRef(false);
+  const s = useRef({
+    down: false,
+    scrub: false,
+    timer: null,
+    startX: 0,
+    hover: -1
+  });
+  const [hover, setHover] = useState(-1);
+  const [scrub, setScrub] = useState(false);
+  function place(f, how, big) {
+    const p = pillRef.current;
+    if (!p) return;
+    p.style.transition = how === "spring" ? "transform .5s cubic-bezier(.3,1.3,.45,1)" : how === "follow" ? "transform .09s linear" : "none";
+    p.style.transform = "translate3d(" + f * 100 + "%,0,0) scale(" + (big ? 1.14 : 1) + ")";
+  }
+  if (api) api.current = {
+    follow: f => place(Math.max(0, Math.min(4, f)), "none", false),
+    settle: i => place(i, "spring", false)
+  };
+  useLayoutEffect(() => {
+    place(idx, placed.current ? "spring" : "none", false);
+    placed.current = true;
+  }, [idx]);
+  function geo(x) {
+    const r = barRef.current.getBoundingClientRect(),
+      w = r.width / 5;
+    const f = Math.max(0, Math.min(4, (x - r.left) / w - 0.5));
+    return {
+      f,
+      slot: Math.max(0, Math.min(4, Math.floor((x - r.left) / w)))
+    };
+  }
+  function choose(i) {
+    if (TAB_ORDER[i] === tab) {
+      place(idx, "spring", false);
+      if (onReselect) onReselect();
+    } else setTab(TAB_ORDER[i]);
+  }
+  function enterScrub(x) {
+    const st = s.current;
+    st.scrub = true;
+    setScrub(true);
+    const g = geo(x);
+    st.hover = g.slot;
+    setHover(g.slot);
+    place(g.f, "spring", true);
+    gomHaptic(8);
+  }
+  function down(e) {
+    if (e.button > 0) return;
+    const st = s.current;
+    st.down = true;
+    st.scrub = false;
+    st.startX = e.clientX;
+    try {
+      barRef.current.setPointerCapture(e.pointerId);
+    } catch (x) {}
+    clearTimeout(st.timer);
+    const x = e.clientX;
+    st.timer = setTimeout(() => {
+      if (st.down && !st.scrub) enterScrub(x);
+    }, 260);
+  }
+  function move(e) {
+    const st = s.current;
+    if (!st.down) return;
+    if (!st.scrub && Math.abs(e.clientX - st.startX) > 10) {
+      clearTimeout(st.timer);
+      enterScrub(e.clientX);
+      return;
+    }
+    if (st.scrub) {
+      const g = geo(e.clientX);
+      place(g.f, "follow", true);
+      if (g.slot !== st.hover) {
+        st.hover = g.slot;
+        setHover(g.slot);
+        gomHaptic(5);
+      }
+    }
+  }
+  function up(e) {
+    const st = s.current;
+    if (!st.down) return;
+    st.down = false;
+    clearTimeout(st.timer);
+    const g = geo(e.clientX);
+    if (st.scrub) {
+      st.scrub = false;
+      setScrub(false);
+      setHover(-1);
+    }
+    choose(g.slot);
+  }
+  function cancel() {
+    const st = s.current;
+    st.down = false;
+    clearTimeout(st.timer);
+    if (st.scrub) {
+      st.scrub = false;
+      setScrub(false);
+      setHover(-1);
+    }
+    place(idx, "spring", false);
+  }
+  const lit = scrub && hover >= 0 ? hover : idx;
   return /*#__PURE__*/React.createElement("nav", {
     "aria-label": "Main",
     style: {
-      display: "flex",
       background: C.white,
       borderTop: `1px solid ${C.creamDark}`,
       flexShrink: 0,
       zIndex: 99,
-      paddingBottom: "env(safe-area-inset-bottom)"
+      paddingBottom: "env(safe-area-inset-bottom)",
+      touchAction: "none",
+      userSelect: "none",
+      WebkitUserSelect: "none",
+      WebkitTouchCallout: "none"
     }
-  }, items.map(n => /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("div", {
+    ref: barRef,
+    onPointerDown: down,
+    onPointerMove: move,
+    onPointerUp: up,
+    onPointerCancel: cancel,
+    onContextMenu: e => e.preventDefault(),
+    style: {
+      position: "relative",
+      display: "flex"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    ref: pillRef,
+    "aria-hidden": "true",
+    style: {
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      left: 0,
+      width: "20%",
+      pointerEvents: "none",
+      willChange: "transform"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: 5,
+      bottom: 5,
+      left: 7,
+      right: 7,
+      borderRadius: 18,
+      background: scrub ? "rgba(212,230,220,.95)" : C.sagePale,
+      boxShadow: scrub ? "0 6px 20px rgba(35,68,59,.18), inset 0 0 0 1px rgba(255,255,255,.7)" : "none",
+      transition: "background .25s, box-shadow .25s"
+    }
+  })), items.map((n, i) => /*#__PURE__*/React.createElement("button", {
     key: n.id,
-    onClick: () => setTab(n.id),
+    "aria-current": tab === n.id ? "page" : undefined,
+    onClick: e => {
+      if (e.detail === 0) choose(i);
+    },
     style: {
       flex: 1,
+      position: "relative",
+      zIndex: 1,
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      padding: "9px 0 6px",
+      padding: "10px 0 8px",
       background: "none",
       border: "none",
       cursor: "pointer",
-      color: tab === n.id ? C.forest : C.charcoal,
-      opacity: tab === n.id ? 1 : .35,
-      transition: "all .18s"
+      color: lit === i ? C.forest : C.charcoal,
+      opacity: lit === i ? 1 : .42,
+      transition: "color .25s, opacity .25s, transform .16s"
     }
-  }, n.ic, /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("span", {
+    className: tab === n.id && changed ? "gom-icon-on" : "",
+    style: {
+      display: "inline-flex"
+    }
+  }, n.ic), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 9,
-      fontWeight: tab === n.id ? "bold" : "normal",
+      fontWeight: lit === i ? "bold" : "normal",
       marginTop: 2
     }
-  }, n.l), tab === n.id && /*#__PURE__*/React.createElement("div", {
+  }, n.l)))));
+}
+
+// Tab pages sit side by side. Swipe left or right to move between them, like Instagram
+// or the iPhone home screen; tapping a tab slides there too.
+function TabPager({
+  tab,
+  setTab,
+  panes,
+  navApi,
+  scrollStore,
+  paneRefs
+}) {
+  const idx = TAB_ORDER.indexOf(tab);
+  const wrapRef = useRef(null);
+  const trackRef = useRef(null);
+  const first = useRef(true);
+  const idxRef = useRef(idx);
+  idxRef.current = idx;
+  const setTabRef = useRef(setTab);
+  setTabRef.current = setTab;
+  const [all, setAll] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setAll(true), 500);
+    return () => clearTimeout(t);
+  }, []);
+  useLayoutEffect(() => {
+    const t = trackRef.current;
+    t.style.transition = first.current || gomReducedMotion() ? "none" : "transform .4s cubic-bezier(.2,.9,.22,1)";
+    t.style.transform = "translate3d(" + -idx * 100 + "%,0,0)";
+    if (first.current) TAB_ORDER.forEach((k, i) => {
+      const p = paneRefs.current[i];
+      if (p) p.scrollTop = scrollStore.current[k] || 0;
+    });
+    first.current = false;
+  }, [idx]);
+  useEffect(() => {
+    const w = wrapRef.current,
+      track = trackRef.current;
+    let active = false,
+      decided = false,
+      sx = 0,
+      sy = 0,
+      dx = 0,
+      lastX = 0,
+      lastT = 0,
+      vel = 0,
+      width = 1;
+    function blocked(el) {
+      while (el && el !== w) {
+        const tg = el.tagName;
+        if (tg === "INPUT" || tg === "TEXTAREA" || tg === "SELECT") return true;
+        if (el.scrollWidth > el.clientWidth + 2) {
+          const ox = getComputedStyle(el).overflowX;
+          if (ox === "auto" || ox === "scroll") return true;
+        }
+        el = el.parentElement;
+      }
+      return false;
+    }
+    function start(e) {
+      if (e.touches.length !== 1 || blocked(e.target)) {
+        active = false;
+        return;
+      }
+      const t = e.touches[0];
+      active = true;
+      decided = false;
+      sx = lastX = t.clientX;
+      sy = t.clientY;
+      lastT = Date.now();
+      dx = 0;
+      vel = 0;
+      width = w.clientWidth || 1;
+    }
+    function move(e) {
+      if (!active) return;
+      const t = e.touches[0],
+        mx = t.clientX - sx,
+        my = t.clientY - sy;
+      if (!decided) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        decided = true;
+        if (Math.abs(mx) < Math.abs(my) * 1.2) {
+          active = false;
+          return;
+        }
+        track.style.transition = "none";
+      }
+      const i = idxRef.current;
+      dx = mx;
+      if (i === 0 && dx > 0 || i === TAB_ORDER.length - 1 && dx < 0) dx = dx / 3;
+      const now = Date.now();
+      vel = (t.clientX - lastX) / Math.max(1, now - lastT);
+      lastX = t.clientX;
+      lastT = now;
+      track.style.transform = "translate3d(calc(" + -i * 100 + "% + " + dx + "px),0,0)";
+      if (navApi.current) navApi.current.follow(i - dx / width);
+      if (e.cancelable) e.preventDefault();
+    }
+    function end() {
+      if (!active) return;
+      active = false;
+      if (!decided) return;
+      const i = idxRef.current;
+      let ni = i;
+      if ((dx < -width * 0.22 || vel < -0.35 && dx < -20) && i < TAB_ORDER.length - 1) ni = i + 1;else if ((dx > width * 0.22 || vel > 0.35 && dx > 20) && i > 0) ni = i - 1;
+      if (ni !== i) {
+        gomHaptic(6);
+        setTabRef.current(TAB_ORDER[ni]);
+      } else {
+        track.style.transition = "transform .34s cubic-bezier(.2,.9,.22,1)";
+        track.style.transform = "translate3d(" + -i * 100 + "%,0,0)";
+        if (navApi.current) navApi.current.settle(i);
+      }
+    }
+    w.addEventListener("touchstart", start, {
+      passive: true
+    });
+    w.addEventListener("touchmove", move, {
+      passive: false
+    });
+    w.addEventListener("touchend", end);
+    w.addEventListener("touchcancel", end);
+    return () => {
+      w.removeEventListener("touchstart", start);
+      w.removeEventListener("touchmove", move);
+      w.removeEventListener("touchend", end);
+      w.removeEventListener("touchcancel", end);
+    };
+  }, []);
+  return /*#__PURE__*/React.createElement("div", {
+    ref: wrapRef,
+    onScroll: e => {
+      e.currentTarget.scrollLeft = 0;
+    },
     style: {
-      width: 24,
-      height: 3,
-      borderRadius: 2,
-      background: C.forest,
-      marginTop: 2
+      flex: 1,
+      minHeight: 0,
+      overflow: "hidden",
+      position: "relative"
     }
-  }))));
+  }, /*#__PURE__*/React.createElement("div", {
+    ref: trackRef,
+    style: {
+      display: "flex",
+      height: "100%",
+      width: "100%",
+      willChange: "transform"
+    }
+  }, TAB_ORDER.map((k, i) => {
+    const show = all || Math.abs(i - idx) <= 1;
+    return /*#__PURE__*/React.createElement("div", {
+      key: k,
+      ref: el => {
+        paneRefs.current[i] = el;
+      },
+      inert: i === idx ? undefined : "",
+      "aria-hidden": i === idx ? undefined : "true",
+      onScroll: e => {
+        scrollStore.current[k] = e.currentTarget.scrollTop;
+      },
+      style: {
+        flex: "0 0 100%",
+        width: "100%",
+        height: "100%",
+        overflowY: "auto",
+        overscrollBehaviorY: "contain",
+        touchAction: "pan-y",
+        paddingBottom: 20
+      }
+    }, show ? panes[k] : null);
+  })));
 }
 
 // ─── SESSION DATA WITH IMAGES ─────────────────────────────────────────────────
@@ -6431,6 +6880,7 @@ function ProgramView({
     color: color,
     onBack: onBack
   }), /*#__PURE__*/React.createElement("div", {
+    className: "gom-stagger",
     style: {
       padding: "16px 16px 60px"
     }
@@ -6561,20 +7011,46 @@ function ProgramView({
 function App() {
   const [tab, setTab] = useLocalState("gom_tab", "home", v => ["home", "programs", "tools", "learn", "support"].indexOf(v) !== -1);
   const mainRef = useRef(null);
-  const savedScroll = useRef(0);
+  const tabScroll = useRef({}); // each tab remembers how far down you scrolled
+  const paneRefs = useRef([]);
+  const navApi = useRef(null);
   const [view, setView] = useState(null); // { type, data }
   const [viewHistory, setViewHistory] = useState([]); // Navigation stack
-  const [quizS, setQuizS] = useState("idle");
+  const [quizS, setQuizS0] = useState("idle");
+  const [motion, setMotion] = useState({
+    id: 0,
+    dir: "none"
+  });
+  GOM_MOTION = motion;
+  function mark(dir) {
+    gomSnapshot(dir);
+    setMotion(m => ({
+      id: m.id + 1,
+      dir
+    }));
+  }
+  function setQuizS(s) {
+    mark(s === "idle" ? "pop" : "push");
+    setQuizS0(s);
+  }
+  function replaceView(type, data) {
+    mark("push");
+    setView({
+      type,
+      data
+    });
+  }
   const [quizR, setQuizR] = useState(null);
   function go(type, data) {
-    if (!view && mainRef.current) savedScroll.current = mainRef.current.scrollTop; // remember where you were on the tab
+    mark("push");
     if (view) setViewHistory(h => [...h, view]); // Save current view before navigating
     setView({
       type,
       data
     });
   }
-  function back() {
+  function back(dir) {
+    mark(typeof dir === "string" ? dir : "pop");
     if (viewHistory.length > 0) {
       const prev = viewHistory[viewHistory.length - 1];
       setView(prev);
@@ -6585,9 +7061,141 @@ function App() {
   }
 
   // When you come back from a program or tool, return to the same spot on the tab
-  useLayoutEffect(() => {
-    if (!view && mainRef.current) mainRef.current.scrollTop = savedScroll.current;
-  }, [view]);
+  // Phone back gestures and the browser Back button go back one screen inside the app
+  // instead of leaving the site.
+  const inSub = !!view || quizS !== "idle";
+  const guard = useRef(false);
+  const skipPop = useRef(false);
+  const backRef = useRef(null);
+  backRef.current = function (dir) {
+    if (view) back(dir);else if (quizS !== "idle") {
+      mark(dir);
+      setQuizS0("idle");
+    }
+  };
+  const subRef = useRef(false);
+  subRef.current = inSub;
+  useEffect(() => {
+    function onPop(e) {
+      if (skipPop.current) {
+        skipPop.current = false;
+        return;
+      }
+      if (e.state && e.state.gom) {
+        skipPop.current = true;
+        try {
+          history.back();
+        } catch (x) {}
+        return;
+      }
+      guard.current = false;
+      if (subRef.current) backRef.current("fade");
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  useEffect(() => {
+    try {
+      if (inSub && !guard.current) {
+        history.pushState({
+          gom: 1
+        }, "");
+        guard.current = true;
+      } else if (!inSub && guard.current) {
+        guard.current = false;
+        skipPop.current = true;
+        history.back();
+        setTimeout(() => {
+          skipPop.current = false;
+        }, 700);
+      }
+    } catch (x) {}
+  }, [inSub, motion.id]);
+
+  // On the home-screen app (no browser bar), swipe from the left edge to go back, like Instagram.
+  useEffect(() => {
+    const standalone = window.navigator.standalone === true || window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+    if (!standalone) return;
+    let el = null,
+      sx = 0,
+      sy = 0,
+      dx = 0,
+      lastX = 0,
+      lastT = 0,
+      vel = 0,
+      active = false,
+      decided = false;
+    function start(e) {
+      if (!subRef.current || e.touches.length !== 1) return;
+      const scr = document.querySelector(".gom-screen");
+      if (!scr) return;
+      const t = e.touches[0];
+      if (t.clientX - scr.getBoundingClientRect().left > 28) return;
+      el = scr;
+      sx = lastX = t.clientX;
+      sy = t.clientY;
+      lastT = Date.now();
+      dx = 0;
+      vel = 0;
+      active = true;
+      decided = false;
+    }
+    function move(e) {
+      if (!active) return;
+      const t = e.touches[0],
+        mx = t.clientX - sx,
+        my = t.clientY - sy;
+      if (!decided) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        decided = true;
+        if (Math.abs(my) > Math.abs(mx) || mx < 0) {
+          active = false;
+          return;
+        }
+        el.style.animation = "none";
+        el.style.transition = "none";
+        el.style.boxShadow = "-12px 0 32px rgba(0,0,0,.14)";
+      }
+      const now = Date.now();
+      vel = (t.clientX - lastX) / Math.max(1, now - lastT);
+      lastX = t.clientX;
+      lastT = now;
+      dx = Math.max(0, mx);
+      el.style.transform = "translate3d(" + dx + "px,0,0)";
+      if (e.cancelable) e.preventDefault();
+    }
+    function end() {
+      if (!active) return;
+      active = false;
+      if (!decided) return;
+      const node = el,
+        w = node.offsetWidth,
+        leave = dx > w * 0.35 || vel > 0.45 && dx > 40;
+      node.style.transition = "transform .26s cubic-bezier(.2,.9,.22,1)";
+      node.style.transform = leave ? "translate3d(" + w + "px,0,0)" : "translate3d(0,0,0)";
+      setTimeout(() => {
+        if (leave) backRef.current("fade");else {
+          node.style.transition = "";
+          node.style.transform = "";
+          node.style.boxShadow = "";
+        }
+      }, 260);
+    }
+    document.addEventListener("touchstart", start, {
+      passive: true
+    });
+    document.addEventListener("touchmove", move, {
+      passive: false
+    });
+    document.addEventListener("touchend", end);
+    document.addEventListener("touchcancel", end);
+    return () => {
+      document.removeEventListener("touchstart", start);
+      document.removeEventListener("touchmove", move);
+      document.removeEventListener("touchend", end);
+      document.removeEventListener("touchcancel", end);
+    };
+  }, []);
 
   // Special full-screen views
   if (view?.type === "sleep") return /*#__PURE__*/React.createElement(Shell, null, /*#__PURE__*/React.createElement(SleepPlanner, {
@@ -6704,29 +7312,21 @@ function App() {
     onBack: back,
     onNavigate: action => {
       if (action === "pacer") {
-        back();
-        setTimeout(() => go("pacer", {}), 50);
+        replaceView("pacer", {});
       } else if (action === "sleep") {
-        back();
-        setTimeout(() => go("sleep", {}), 50);
+        replaceView("sleep", {});
       } else if (action === "routine") {
-        back();
-        setTimeout(() => go("routine", {}), 50);
+        replaceView("routine", {});
       } else if (action === "chat") {
-        back();
-        setTimeout(() => go("chat", {}), 50);
+        replaceView("chat", {});
       } else if (action === "tool_flare") {
-        back();
-        setTimeout(() => go("tool", TOOLS[0]), 50);
+        replaceView("tool", TOOLS[0]);
       } else if (action === "tool_food") {
-        back();
-        setTimeout(() => go("tool", TOOLS[3]), 50);
+        replaceView("tool", TOOLS[3]);
       } else if (action === "tool_meal") {
-        back();
-        setTimeout(() => go("tool", TOOLS[1]), 50);
+        replaceView("tool", TOOLS[1]);
       } else if (action === "tool_body") {
-        back();
-        setTimeout(() => go("tool", TOOLS[4]), 50);
+        replaceView("tool", TOOLS[4]);
       }
     }
   });
@@ -6863,28 +7463,41 @@ function App() {
       cursor: "pointer"
     }
   }, "Explore on my own"))));
-  return /*#__PURE__*/React.createElement(Shell, null, /*#__PURE__*/React.createElement("div", {
-    key: tab,
-    ref: mainRef,
-    style: {
-      flex: 1,
-      overflowY: "auto",
-      paddingBottom: 66
-    }
-  }, tab === "home" && /*#__PURE__*/React.createElement(HomeTab, {
-    go: go,
-    setTab: setTab,
-    setQuizS: setQuizS
-  }), tab === "programs" && /*#__PURE__*/React.createElement(ProgsTab, {
-    go: go
-  }), tab === "tools" && /*#__PURE__*/React.createElement(ToolsTab, {
-    go: go,
-    setQuizS: setQuizS
-  }), tab === "learn" && /*#__PURE__*/React.createElement(LearnTab, {
-    go: go
-  }), tab === "support" && /*#__PURE__*/React.createElement(SupportTab, null)), /*#__PURE__*/React.createElement(Nav, {
+  return /*#__PURE__*/React.createElement(Shell, null, /*#__PURE__*/React.createElement(TabPager, {
     tab: tab,
-    setTab: setTab
+    setTab: setTab,
+    navApi: navApi,
+    scrollStore: tabScroll,
+    paneRefs: paneRefs,
+    panes: {
+      home: /*#__PURE__*/React.createElement(HomeTab, {
+        go: go,
+        setTab: setTab,
+        setQuizS: setQuizS
+      }),
+      programs: /*#__PURE__*/React.createElement(ProgsTab, {
+        go: go
+      }),
+      tools: /*#__PURE__*/React.createElement(ToolsTab, {
+        go: go,
+        setQuizS: setQuizS
+      }),
+      learn: /*#__PURE__*/React.createElement(LearnTab, {
+        go: go
+      }),
+      support: /*#__PURE__*/React.createElement(SupportTab, null)
+    }
+  }), /*#__PURE__*/React.createElement(Nav, {
+    tab: tab,
+    setTab: setTab,
+    api: navApi,
+    onReselect: () => {
+      const p = paneRefs.current[TAB_ORDER.indexOf(tab)];
+      if (p) p.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
   }));
 }
 
@@ -6895,6 +7508,7 @@ function HomeTab({
   setQuizS
 }) {
   return /*#__PURE__*/React.createElement("div", {
+    className: "gom-stagger",
     style: {
       background: C.sagePale,
       minHeight: "100%"
@@ -7215,6 +7829,7 @@ function ProgsTab({
   go
 }) {
   return /*#__PURE__*/React.createElement("div", {
+    className: "gom-stagger",
     style: {
       padding: "48px 16px 20px",
       background: C.sagePale,
@@ -7361,6 +7976,7 @@ function ToolsTab({
   setQuizS
 }) {
   return /*#__PURE__*/React.createElement("div", {
+    className: "gom-stagger",
     style: {
       padding: "48px 16px 20px",
       background: C.sagePale,
@@ -7840,6 +8456,7 @@ function LearnTab({
   go
 }) {
   return /*#__PURE__*/React.createElement("div", {
+    className: "gom-stagger",
     style: {
       padding: "48px 16px 20px",
       background: C.sagePale,
@@ -7889,7 +8506,7 @@ function LearnTab({
       display: "flex",
       alignItems: "center",
       gap: 11,
-      animation: `fadeUp .3s ${i * .03}s both`,
+      animation: `fadeUp .3s ${i * .03}s backwards`,
       opacity: t.sessions ? 1 : .65
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -8651,6 +9268,7 @@ function SuggestionBox() {
 const ABOUT_TEXT = "Gut Over Matter is a knowledge translation tool that explains irritable bowel syndrome (IBS) as a disorder of gut-brain interaction, in plain language. It turns peer-reviewed research and clinical guidelines into guided programs, nervous system regulation tools, science explainers, and Gut IQ, an assistant that answers questions about the science. Everything you save stays on your own device. It is an educational resource and does not replace care from a clinician.";
 function SupportTab() {
   return /*#__PURE__*/React.createElement("div", {
+    className: "gom-stagger",
     style: {
       background: C.sagePale,
       minHeight: "100%"
