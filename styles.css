@@ -1,0 +1,89 @@
+/* Gut Over Matter: page-level styles. Screen styles live in app.js. */
+
+:root {
+  --app-h: 100vh;
+}
+/* Use the real visible height on phones (Safari's toolbars change size). */
+@supports (height: 100dvh) {
+  :root { --app-h: 100dvh; }
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #F7F3ED;
+  color: #2E2E2E;
+  font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+#root {
+  min-height: var(--app-h);
+}
+
+/* Phones and tablets: 16px text in typing boxes stops iPhone Safari from zooming in when you tap them. */
+@media (pointer: coarse) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #23443B;
+  outline-offset: 2px;
+}
+
+/* Loading screen (shown until the app has drawn its first screen) */
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #F7F3ED;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: Georgia, serif;
+  transition: opacity .3s ease;
+}
+#loading-screen .spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #D4E6DC;
+  border-top-color: #23443B;
+  border-radius: 50%;
+  animation: gom-spin .8s linear infinite;
+  margin-bottom: 20px;
+}
+#loading-screen .brand {
+  color: #23443B;
+  font-size: 16px;
+  font-style: italic;
+  margin: 0 0 8px;
+}
+#loading-screen .sub {
+  color: #8FAF9D;
+  font-size: 12px;
+  margin: 0;
+}
+#loading-screen .slow {
+  color: #2E2E2E;
+  font-size: 12px;
+  margin: 18px 0 0;
+  opacity: 0;
+  animation: gom-show .4s ease 8s forwards;
+}
+@keyframes gom-spin { to { transform: rotate(360deg); } }
+@keyframes gom-show { to { opacity: .6; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

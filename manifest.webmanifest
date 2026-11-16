@@ -1,0 +1,16 @@
+{
+  "name": "Gut Over Matter",
+  "short_name": "Gut Over Matter",
+  "description": "Understanding IBS through the gut-brain loop, in plain language.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F7F3ED",
+  "theme_color": "#23443B",
+  "icons": [
+    { "src": "images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "images/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
