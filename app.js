@@ -439,6 +439,36 @@ function gomSnapshot(dir) {
   } catch (e) {}
 }
 
+// The page itself never needs to scroll sideways. If iPhone Safari ever nudges it, put it straight back.
+(function () {
+  function fix() {
+    if (window.scrollX) window.scrollTo(0, window.scrollY);
+  }
+  window.addEventListener("scroll", fix, {
+    passive: true
+  });
+  window.addEventListener("resize", fix);
+  document.addEventListener("animationend", fix, true);
+})();
+function gomScrollToEnd(el, smooth) {
+  let p = el && el.parentElement;
+  while (p && p !== document.body) {
+    const oy = getComputedStyle(p).overflowY;
+    if ((oy === "auto" || oy === "scroll") && p.scrollHeight > p.clientHeight) {
+      try {
+        p.scrollTo({
+          top: p.scrollHeight,
+          behavior: smooth ? "smooth" : "auto"
+        });
+      } catch (e) {
+        p.scrollTop = p.scrollHeight;
+      }
+      return;
+    }
+    p = p.parentElement;
+  }
+}
+
 // ─── COLOUR PALETTE ───────────────────────────────────────────────────────────
 const C = {
   forest: "#23443B",
@@ -480,6 +510,8 @@ const G = `
   @keyframes gomBubble{from{opacity:0;transform:translate3d(0,10px,0) scale(.96)}to{opacity:1;transform:none}}
   @keyframes gomIcon{0%{transform:scale(.82)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
   @keyframes gomImg{from{opacity:0}}
+  .gom-shell{overflow:clip !important;}
+  html,body,#root{overflow-x:hidden;overflow-x:clip;max-width:100%;}
   .gom-screen{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;z-index:1;}
   .gom-push{animation:gomSlideIn .36s cubic-bezier(.2,.9,.22,1) both;background:#F7F3ED;box-shadow:-12px 0 32px rgba(0,0,0,.14);}
   .gom-pop{animation:gomUnderIn .32s cubic-bezier(.2,.9,.22,1) both;}
@@ -1897,10 +1929,12 @@ function ReflectionChat({
   const [load, setLoad] = useState(false);
   const [open, setOpen] = useState(false);
   const bot = useRef(null);
+  const scrolledOnce = useRef(false);
   useEffect(() => {
-    bot.current?.scrollIntoView({
-      behavior: "smooth"
-    });
+    if (bot.current) {
+      gomScrollToEnd(bot.current, scrolledOnce.current);
+      scrolledOnce.current = true;
+    }
   }, [msgs]);
 
   // When parent triggers an external query (e.g., via the "Want this in plainer
@@ -3328,11 +3362,12 @@ function Chat() {
   const [load, setLoad] = useState(false);
   const bot = useRef(null);
   // Braces matter: newer browsers return a value from scrollIntoView, which crashed this screen in v7.
+  const scrolledOnce = useRef(false);
   useEffect(() => {
-    if (bot.current) bot.current.scrollIntoView({
-      behavior: "smooth",
-      block: "end"
-    });
+    if (bot.current) {
+      gomScrollToEnd(bot.current, scrolledOnce.current);
+      scrolledOnce.current = true;
+    }
   }, [msgs, load]);
   const STARTERS = ["How does the vagus nerve affect IBS?", "What is actually happening during a flare?", "How does stress trigger gut symptoms?", "What does the low-FODMAP diet actually do?", "How does slow breathing help my gut?", "What is visceral hypersensitivity?", "Why does my cycle change my IBS?", "What is gut-directed hypnotherapy?"];
   function ask(text) {
@@ -3923,6 +3958,14 @@ function Shell({
   children
 }) {
   return /*#__PURE__*/React.createElement("div", {
+    className: "gom-shell",
+    onScroll: e => {
+      const t = e.currentTarget;
+      if (t.scrollLeft || t.scrollTop) {
+        t.scrollLeft = 0;
+        t.scrollTop = 0;
+      }
+    },
     style: {
       width: "100%",
       maxWidth: 430,
