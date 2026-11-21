@@ -435,7 +435,7 @@ function gomSnapshot(dir) {
         dst[i].scrollLeft = l;
       }
     });
-    setTimeout(() => clip.remove(), 480);
+    setTimeout(() => clip.remove(), 640);
   } catch (e) {}
 }
 
@@ -500,8 +500,8 @@ const G = `
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
   @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
   @keyframes gomSlideIn{from{transform:translate3d(100%,0,0)}to{transform:none}}
-  @keyframes gomUnderIn{from{transform:translate3d(-28%,0,0)}to{transform:none}}
-  @keyframes gomUnderOut{to{transform:translate3d(-28%,0,0)}}
+  @keyframes gomUnderIn{from{transform:translate3d(-24%,0,0)}to{transform:none}}
+  @keyframes gomUnderOut{to{transform:translate3d(-24%,0,0)}}
   @keyframes gomOverOut{to{transform:translate3d(100%,0,0)}}
   @keyframes gomShade{from{opacity:0}to{opacity:1}}
   @keyframes gomFade{from{opacity:0}to{opacity:1}}
@@ -513,23 +513,25 @@ const G = `
   .gom-shell{overflow:clip !important;}
   html,body,#root{overflow-x:hidden;overflow-x:clip;max-width:100%;}
   .gom-screen{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;z-index:1;}
-  .gom-push{animation:gomSlideIn .36s cubic-bezier(.2,.9,.22,1) both;background:#F7F3ED;box-shadow:-12px 0 32px rgba(0,0,0,.14);}
-  .gom-pop{animation:gomUnderIn .32s cubic-bezier(.2,.9,.22,1) both;}
+  .gom-push{animation:gomSlideIn .5s cubic-bezier(.3,.2,.15,1) both;background:#F7F3ED;box-shadow:-12px 0 32px rgba(0,0,0,.14);}
+  .gom-pop{animation:gomUnderIn .46s cubic-bezier(.3,.2,.15,1) both;}
   .gom-fade{animation:gomFade .24s ease-out both;}
-  .gom-ghost-push{animation:gomUnderOut .36s cubic-bezier(.2,.9,.22,1) both;}
-  .gom-ghost-pop{animation:gomOverOut .32s cubic-bezier(.3,.6,.25,1) both;box-shadow:-12px 0 32px rgba(0,0,0,.14);}
-  .gom-shade{position:absolute;inset:0;background:rgba(20,35,30,.10);pointer-events:none;animation:gomShade .36s ease-out both;}
-  .gom-stagger > *{animation:gomRise .42s cubic-bezier(.2,.9,.22,1) backwards;}
-  .gom-stagger > *:nth-child(2){animation-delay:.04s}.gom-stagger > *:nth-child(3){animation-delay:.08s}.gom-stagger > *:nth-child(4){animation-delay:.12s}.gom-stagger > *:nth-child(5){animation-delay:.16s}.gom-stagger > *:nth-child(6){animation-delay:.2s}.gom-stagger > *:nth-child(n+7){animation-delay:.24s}
+  .gom-ghost-push{animation:gomUnderOut .5s cubic-bezier(.3,.2,.15,1) both;}
+  .gom-ghost-pop{animation:gomOverOut .46s cubic-bezier(.3,.2,.15,1) both;box-shadow:-12px 0 32px rgba(0,0,0,.14);}
+  .gom-shade{position:absolute;inset:0;background:rgba(20,35,30,.10);pointer-events:none;animation:gomShade .5s ease-out both;}
+  .gom-stagger > *{animation:gomRise .55s cubic-bezier(.3,.2,.15,1) backwards;}
+  .gom-stagger > *:nth-child(2){animation-delay:.05s}.gom-stagger > *:nth-child(3){animation-delay:.1s}.gom-stagger > *:nth-child(4){animation-delay:.15s}.gom-stagger > *:nth-child(5){animation-delay:.2s}.gom-stagger > *:nth-child(6){animation-delay:.25s}.gom-stagger > *:nth-child(n+7){animation-delay:.3s}
   .gom-ghost *{animation:none !important;transition:none !important;}
   .gom-pop .gom-stagger > *,.gom-fade .gom-stagger > *,.gom-pop [style*="fadeUp"],.gom-fade [style*="fadeUp"]{animation:none !important;}
+  @keyframes gomSettle{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
+  .gom-push > * + *{animation:gomSettle .5s ease-out .12s backwards;}
   .gom-drop{animation:gomDrop .3s cubic-bezier(.2,.9,.22,1) both;}
   .gom-bubble{animation:gomBubble .3s cubic-bezier(.2,.9,.22,1) both;}
   .gom-icon-on{animation:gomIcon .38s cubic-bezier(.3,1.4,.5,1);}
-  .gom-img-in{animation:gomImg .3s ease-out;}
+  .gom-img-in{animation:gomImg .45s ease-out;}
   button{transition:transform .16s cubic-bezier(.2,.9,.22,1);touch-action:manipulation;}
   button:not(:disabled):active{transform:scale(.97);}
-  @media (prefers-reduced-motion: reduce){.gom-push,.gom-pop,.gom-fade,.gom-ghost-push,.gom-ghost-pop,.gom-shade,.gom-stagger > *,.gom-drop,.gom-bubble,.gom-icon-on,.gom-img-in{animation:none !important;}button:not(:disabled):active{transform:none;}}
+  @media (prefers-reduced-motion: reduce){.gom-push,.gom-push > * + *,.gom-pop,.gom-fade,.gom-ghost-push,.gom-ghost-pop,.gom-shade,.gom-stagger > *,.gom-drop,.gom-bubble,.gom-icon-on,.gom-img-in{animation:none !important;}button:not(:disabled):active{transform:none;}}
   
 
 `;
@@ -4266,6 +4268,7 @@ function TabPager({
   const wrapRef = useRef(null);
   const trackRef = useRef(null);
   const first = useRef(true);
+  const swiped = useRef(false);
   const idxRef = useRef(idx);
   idxRef.current = idx;
   const setTabRef = useRef(setTab);
@@ -4277,7 +4280,8 @@ function TabPager({
   }, []);
   useLayoutEffect(() => {
     const t = trackRef.current;
-    t.style.transition = first.current || gomReducedMotion() ? "none" : "transform .4s cubic-bezier(.2,.9,.22,1)";
+    t.style.transition = first.current || gomReducedMotion() ? "none" : swiped.current ? "transform .4s cubic-bezier(.2,.5,.15,1)" : "transform .5s cubic-bezier(.3,.2,.15,1)";
+    swiped.current = false;
     t.style.transform = "translate3d(" + -idx * 100 + "%,0,0)";
     if (first.current) TAB_ORDER.forEach((k, i) => {
       const p = paneRefs.current[i];
@@ -4358,9 +4362,10 @@ function TabPager({
       if ((dx < -width * 0.22 || vel < -0.35 && dx < -20) && i < TAB_ORDER.length - 1) ni = i + 1;else if ((dx > width * 0.22 || vel > 0.35 && dx > 20) && i > 0) ni = i - 1;
       if (ni !== i) {
         gomHaptic(6);
+        swiped.current = true;
         setTabRef.current(TAB_ORDER[ni]);
       } else {
-        track.style.transition = "transform .34s cubic-bezier(.2,.9,.22,1)";
+        track.style.transition = "transform .4s cubic-bezier(.2,.5,.15,1)";
         track.style.transform = "translate3d(" + -i * 100 + "%,0,0)";
         if (navApi.current) navApi.current.settle(i);
       }
@@ -7229,12 +7234,7 @@ function App() {
   function go(type, data) {
     const img = type === "session" && data && data.session && data.session.img;
     const token = ++goToken.current;
-    if (img && !gomReady(img)) {
-      gomPreload(img, 260).then(() => {
-        if (token === goToken.current) goNow(type, data);
-      });
-      return;
-    }
+    if (img) gomPreload(img);
     goNow(type, data);
   }
   function goNow(type, data) {
@@ -7367,7 +7367,7 @@ function App() {
       const node = el,
         w = node.offsetWidth,
         leave = dx > w * 0.35 || vel > 0.45 && dx > 40;
-      node.style.transition = "transform .26s cubic-bezier(.2,.9,.22,1)";
+      node.style.transition = "transform .32s cubic-bezier(.2,.5,.15,1)";
       node.style.transform = leave ? "translate3d(" + w + "px,0,0)" : "translate3d(0,0,0)";
       setTimeout(() => {
         if (leave) backRef.current("fade");else {
@@ -7375,7 +7375,7 @@ function App() {
           node.style.transform = "";
           node.style.boxShadow = "";
         }
-      }, 260);
+      }, 320);
     }
     document.addEventListener("touchstart", start, {
       passive: true
