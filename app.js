@@ -6161,23 +6161,17 @@ const PROGRAMS = {
 
 // ─── TESTIMONIALS ─────────────────────────────────────────────────────────────
 const TESTERS = [{
-  n: "Kaelyn C.",
   r: "22 · IBS patient for over 6 years",
-  b: "After years of appointments with gastroenterologists, dietitians, and her GP, and countless rounds of dietary restriction, Kaelyn had never received a clear explanation of why her symptoms kept worsening despite everything she tried.",
-  a: "'For the first time, I actually understand what is happening in my body. I always thought it was the food. The pre-event flare diagram was my life described exactly. As someone who has had a hard semester with all of this recently, I felt genuinely emotional learning how my body was actually working.'",
-  init: "K"
+  b: "Years of appointments with gastroenterologists, dietitians and a GP, and many rounds of cutting out foods. Never received a clear explanation of why symptoms kept getting worse.",
+  a: "For the first time, I actually understand what is happening in my body. I always thought it was the food. The pre-event flare diagram was my life described exactly. As someone who has had a hard semester with all of this recently, I felt genuinely emotional learning how my body was actually working."
 }, {
-  n: "Daniel K.",
   r: "Physiotherapist",
-  b: "Understood autonomic regulation and pelvic floor dysfunction clinically but had not previously encountered a resource that connected these directly to the IBS gut-brain axis in accessible, patient-facing language.",
-  a: "This is what I wish I could hand to every patient who walks in with IBS-type symptoms and has been given no framework for understanding them. The pelvic floor overlap section is clinically sound and explained beautifully.",
-  init: "D"
+  b: "Understood the nervous system and pelvic floor clinically, but had not found a resource that linked them to IBS and the gut-brain axis in plain language written for patients.",
+  a: "This is what I wish I could hand to every patient who walks in with IBS-type symptoms and has been given no framework for understanding them. The pelvic floor overlap section is clinically sound and explained beautifully."
 }, {
-  n: "Monika M.",
   r: "48 · Perimenopausal · IBS since her 30s",
-  b: "Monika had managed her IBS reasonably well for years, but since entering perimenopause her symptoms had become unpredictable and severe again. Each specialist appointment left her feeling more confused and more alone.",
-  a: "I did not know hormones had anything to do with my gut. I did not know perimenopause could make IBS worse. I did not know any of this was connected. I finally do not feel like I am going crazy.",
-  init: "M"
+  b: "IBS was manageable for years, until perimenopause made symptoms unpredictable and severe again. Each specialist visit left more confusion, and a feeling of being alone with it.",
+  a: "I did not know hormones had anything to do with my gut. I did not know perimenopause could make IBS worse. I did not know any of this was connected. I finally do not feel like I am going crazy."
 }];
 const MISSING = [{
   q: "Nobody explained that stress physically changes the gut, not just the mood.",
@@ -7199,7 +7193,7 @@ function ProgramView({
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App() {
-  const [tab, setTab] = useLocalState("gom_tab", "home", v => ["home", "programs", "tools", "learn", "support"].indexOf(v) !== -1);
+  const [tab, setTab] = useState("home"); // every fresh launch opens on Home
   const mainRef = useRef(null);
   const tabScroll = useRef({}); // each tab remembers how far down you scrolled
   const paneRefs = useRef([]);
@@ -9361,7 +9355,7 @@ function SuggestionBox() {
         d: new Date().toISOString()
       }].slice(-20));
     }
-    setSubmitted(sent ? "Thank you, your suggestion has been sent." : "Thank you. It could not be sent right now, so it has been saved on this device.");
+    setSubmitted(sent ? "Thank you, your feedback has been sent." : "Thank you. It could not be sent right now, so it has been saved on this device.");
     setText("");
     setSending(false);
     setTimeout(() => setSubmitted(""), 4500);
@@ -9383,7 +9377,7 @@ function SuggestionBox() {
       color: C.forest,
       marginBottom: 4
     }
-  }, "Have a suggestion for the app?"), /*#__PURE__*/React.createElement("p", {
+  }, "Your feedback matters."), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 11.5,
       color: C.charcoal,
@@ -9391,12 +9385,12 @@ function SuggestionBox() {
       lineHeight: 1.5,
       marginBottom: 10
     }
-  }, "Want to hear more about a certain topic? Notice something that could be clearer, more accurate, or added? Share your thoughts here and I will do my best to apply them."), /*#__PURE__*/React.createElement("textarea", {
+  }, "How did Gut Over Matter help you? Anything you'd add or change? Feel free to share as much or as little as you like, such as your profession or how long you've lived with IBS. Please don't include your name or contact details. Suggestions are anonymous and are read by the creator."), /*#__PURE__*/React.createElement("textarea", {
     value: text,
     maxLength: 1500,
-    "aria-label": "Your suggestion",
+    "aria-label": "Your feedback",
     onChange: e => setText(e.target.value),
-    placeholder: "For example: 'I would like more on gut bacteria after antibiotics' or 'the breathing audio sessions would be helpful'...",
+    placeholder: "For example: what helped you, how long you've lived with IBS, or what you'd like to see added...",
     style: {
       width: "100%",
       minHeight: 90,
@@ -9427,7 +9421,7 @@ function SuggestionBox() {
       flex: 1,
       lineHeight: 1.4
     }
-  }, "Suggestions are sent anonymously. Please do not include your name or personal health details."), /*#__PURE__*/React.createElement("button", {
+  }, "Sent anonymously to the creator."), /*#__PURE__*/React.createElement("button", {
     onClick: handleSubmit,
     disabled: !text.trim() || sending,
     style: {
@@ -9543,10 +9537,18 @@ function SupportTab() {
       color: C.charcoal,
       opacity: .4,
       fontWeight: "bold",
-      marginBottom: 12,
+      marginBottom: 8,
       marginTop: 22
     }
-  }, "WHAT CHANGED AFTER USING THIS TOOL"), TESTERS.map((c, i) => /*#__PURE__*/React.createElement("div", {
+  }, "EARLY FEEDBACK"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 11,
+      color: C.charcoal,
+      opacity: .6,
+      lineHeight: 1.55,
+      marginBottom: 12
+    }
+  }, "Shared with permission by people who reviewed early drafts of this app. Names are removed for privacy. This is informal feedback from a knowledge translation project, not a clinical study. It reflects how people found the app: clear and useful."), TESTERS.map((c, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
       background: C.sageLight,
@@ -9562,6 +9564,7 @@ function SupportTab() {
       marginBottom: 11
     }
   }, /*#__PURE__*/React.createElement("div", {
+    "aria-hidden": "true",
     style: {
       width: 38,
       height: 38,
@@ -9571,31 +9574,47 @@ function SupportTab() {
       alignItems: "center",
       justifyContent: "center",
       color: C.white,
-      fontSize: 14,
-      fontWeight: "bold",
+      fontSize: 22,
+      fontFamily: "Georgia,serif",
+      lineHeight: 1,
+      paddingTop: 8,
+      boxSizing: "border-box",
       flexShrink: 0
     }
-  }, c.init), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+  }, "“"), /*#__PURE__*/React.createElement("p", {
     style: {
-      fontSize: 13,
+      fontSize: 12.5,
       fontWeight: "bold",
-      color: C.charcoal
-    }
-  }, c.n), /*#__PURE__*/React.createElement("p", {
-    style: {
-      fontSize: 10.5,
       color: C.charcoal,
-      opacity: .42
+      lineHeight: 1.4
     }
-  }, c.r))), /*#__PURE__*/React.createElement("p", {
+  }, c.r)), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 9.5,
+      letterSpacing: 1.2,
+      color: C.charcoal,
+      opacity: .45,
+      fontWeight: "bold",
+      marginBottom: 3
+    }
+  }, "BEFORE (SUMMARIZED)"), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 11,
       color: C.charcoal,
-      opacity: .45,
-      marginBottom: 7,
+      opacity: .55,
+      marginBottom: 10,
       lineHeight: 1.5
     }
-  }, "Before: ", c.b), /*#__PURE__*/React.createElement("p", {
+  }, c.b), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 9.5,
+      letterSpacing: 1.2,
+      color: C.forest,
+      opacity: .8,
+      fontWeight: "bold",
+      marginBottom: 4
+    }
+  }, "AFTER (IN THEIR WORDS)"), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 13.5,
       fontFamily: "Georgia,serif",
@@ -9605,7 +9624,15 @@ function SupportTab() {
       borderLeft: `3px solid ${C.forest}`,
       paddingLeft: 10
     }
-  }, c.a))), /*#__PURE__*/React.createElement("p", {
+  }, "\"...", c.a, "\""))), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 11.5,
+      color: C.forest,
+      fontStyle: "italic",
+      lineHeight: 1.5,
+      margin: "4px 2px 0"
+    }
+  }, "Have feedback of your own? You can share it anonymously below."), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 10,
       letterSpacing: 2,
@@ -9762,10 +9789,15 @@ function SupportTab() {
   }, "This is not medical advice. Gut Over Matter is a knowledge translation tool grounded in peer-reviewed IBS gut-brain research. It does not replace clinical assessment or clinical care. Please always discuss your symptoms, treatment options, and any medications with your healthcare team."))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement(ErrorBoundary, null, /*#__PURE__*/React.createElement(App, null)));
+try {
+  localStorage.removeItem("gom_tab");
+} catch (e) {}
 requestAnimationFrame(() => requestAnimationFrame(() => {
   const ls = document.getElementById('loading-screen');
-  if (ls) {
+  if (!ls) return;
+  const wait = Math.max(0, 900 - (window.performance ? performance.now() : 0));
+  setTimeout(() => {
     ls.style.opacity = '0';
     setTimeout(() => ls.remove(), 350);
-  }
+  }, wait);
 }));
