@@ -4254,8 +4254,14 @@ function Nav({
   }, n.l)))));
 }
 
-// Tab pages sit side by side. Swipe left or right to move between them, like Instagram
-// or the iPhone home screen; tapping a tab slides there too.
+// Tab pages. Swipe left or right to slide to the next tab, like Instagram or the iPhone home screen.
+// Tapping a tab goes straight to that page with a soft fade, without passing through the tabs in between.
+// Only the pages on screen are drawn, and tab pages are not redrawn on every switch, so it stays light.
+const PaneBody = React.memo(function PaneBody({
+  el
+}) {
+  return el;
+}, () => true);
 function TabPager({
   tab,
   setTab,
@@ -4266,9 +4272,9 @@ function TabPager({
 }) {
   const idx = TAB_ORDER.indexOf(tab);
   const wrapRef = useRef(null);
-  const trackRef = useRef(null);
-  const first = useRef(true);
+  const prevIdx = useRef(idx);
   const swiped = useRef(false);
+  const timer = useRef(null);
   const idxRef = useRef(idx);
   idxRef.current = idx;
   const setTabRef = useRef(setTab);
@@ -4278,20 +4284,79 @@ function TabPager({
     const t = setTimeout(() => setAll(true), 500);
     return () => clearTimeout(t);
   }, []);
-  useLayoutEffect(() => {
-    const t = trackRef.current;
-    t.style.transition = first.current || gomReducedMotion() ? "none" : swiped.current ? "transform .4s cubic-bezier(.2,.5,.15,1)" : "transform .5s cubic-bezier(.3,.2,.15,1)";
-    swiped.current = false;
-    t.style.transform = "translate3d(" + -idx * 100 + "%,0,0)";
-    if (first.current) TAB_ORDER.forEach((k, i) => {
-      const p = paneRefs.current[i];
-      if (p) p.scrollTop = scrollStore.current[k] || 0;
+  // Put every page where it belongs for tab i. dx moves the current page and its neighbour with a finger.
+  function layout(i, dx) {
+    TAB_ORDER.forEach((k, j) => {
+      const el = paneRefs.current[j];
+      if (!el) return;
+      let x = null;
+      if (j === i) x = dx + "px";else if (j === i + 1 && dx < 0) x = "calc(100% + " + dx + "px)";else if (j === i - 1 && dx > 0) x = "calc(-100% + " + dx + "px)";
+      el.style.transition = "none";
+      el.style.opacity = "";
+      el.style.zIndex = j === i ? "2" : "1";
+      if (x === null) {
+        el.style.visibility = "hidden";
+        el.style.transform = "translate3d(0,0,0)";
+      } else {
+        el.style.visibility = "visible";
+        el.style.transform = "translate3d(" + x + ",0,0)";
+      }
     });
-    first.current = false;
+  }
+  useLayoutEffect(() => {
+    const from = prevIdx.current;
+    prevIdx.current = idx;
+    clearTimeout(timer.current);
+    if (from === idx || gomReducedMotion()) {
+      layout(idx, 0);
+      TAB_ORDER.forEach((k, j) => {
+        const p = paneRefs.current[j];
+        if (p && from === idx) p.scrollTop = scrollStore.current[k] || 0;
+      });
+      return;
+    }
+    if (swiped.current) {
+      // The swipe already slid the pages; tidy up once they land.
+      swiped.current = false;
+      timer.current = setTimeout(() => layout(idxRef.current, 0), 420);
+      return;
+    }
+    // Tapped a tab: the chosen page fades straight in over the old one, drifting in slightly from its side.
+    const oldEl = paneRefs.current[from],
+      el = paneRefs.current[idx];
+    if (!el) {
+      layout(idx, 0);
+      return;
+    }
+    TAB_ORDER.forEach((k, j) => {
+      const p = paneRefs.current[j];
+      if (p && j !== from && j !== idx) {
+        p.style.visibility = "hidden";
+        p.style.transition = "none";
+      }
+    });
+    if (oldEl) {
+      oldEl.style.transition = "none";
+      oldEl.style.transform = "translate3d(0,0,0)";
+      oldEl.style.visibility = "visible";
+      oldEl.style.zIndex = "1";
+      oldEl.style.opacity = "";
+    }
+    const dir = idx > from ? 1 : -1;
+    el.style.transition = "none";
+    el.style.visibility = "visible";
+    el.style.zIndex = "2";
+    el.style.opacity = "0";
+    el.style.transform = "translate3d(" + dir * 28 + "px,0,0)";
+    void el.offsetWidth;
+    el.style.transition = "transform .42s cubic-bezier(.3,.2,.15,1), opacity .32s ease-out";
+    el.style.opacity = "1";
+    el.style.transform = "translate3d(0,0,0)";
+    timer.current = setTimeout(() => layout(idxRef.current, 0), 460);
   }, [idx]);
+  useEffect(() => () => clearTimeout(timer.current), []);
   useEffect(() => {
-    const w = wrapRef.current,
-      track = trackRef.current;
+    const w = wrapRef.current;
     let active = false,
       decided = false,
       sx = 0,
@@ -4340,7 +4405,7 @@ function TabPager({
           active = false;
           return;
         }
-        track.style.transition = "none";
+        clearTimeout(timer.current);
       }
       const i = idxRef.current;
       dx = mx;
@@ -4349,7 +4414,7 @@ function TabPager({
       vel = (t.clientX - lastX) / Math.max(1, now - lastT);
       lastX = t.clientX;
       lastT = now;
-      track.style.transform = "translate3d(calc(" + -i * 100 + "% + " + dx + "px),0,0)";
+      layout(i, dx);
       if (navApi.current) navApi.current.follow(i - dx / width);
       if (e.cancelable) e.preventDefault();
     }
@@ -4360,13 +4425,32 @@ function TabPager({
       const i = idxRef.current;
       let ni = i;
       if ((dx < -width * 0.22 || vel < -0.35 && dx < -20) && i < TAB_ORDER.length - 1) ni = i + 1;else if ((dx > width * 0.22 || vel > 0.35 && dx > 20) && i > 0) ni = i - 1;
+      const cur = paneRefs.current[i];
+      const curve = "transform .4s cubic-bezier(.2,.5,.15,1)";
       if (ni !== i) {
+        const nxt = paneRefs.current[ni];
+        const out = ni > i ? "-100%" : "100%";
+        if (cur) {
+          cur.style.transition = curve;
+          cur.style.transform = "translate3d(" + out + ",0,0)";
+        }
+        if (nxt) {
+          nxt.style.visibility = "visible";
+          nxt.style.transition = curve;
+          nxt.style.transform = "translate3d(0,0,0)";
+        }
         gomHaptic(6);
         swiped.current = true;
         setTabRef.current(TAB_ORDER[ni]);
       } else {
-        track.style.transition = "transform .4s cubic-bezier(.2,.5,.15,1)";
-        track.style.transform = "translate3d(" + -i * 100 + "%,0,0)";
+        TAB_ORDER.forEach((k, j) => {
+          const p = paneRefs.current[j];
+          if (p && p.style.visibility === "visible") {
+            p.style.transition = curve;
+            p.style.transform = j === i ? "translate3d(0,0,0)" : "translate3d(" + (j > i ? "100%" : "-100%") + ",0,0)";
+          }
+        });
+        timer.current = setTimeout(() => layout(i, 0), 420);
         if (navApi.current) navApi.current.settle(i);
       }
     }
@@ -4396,14 +4480,6 @@ function TabPager({
       overflow: "hidden",
       position: "relative"
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    ref: trackRef,
-    style: {
-      display: "flex",
-      height: "100%",
-      width: "100%",
-      willChange: "transform"
-    }
   }, TAB_ORDER.map((k, i) => {
     const show = all || Math.abs(i - idx) <= 1;
     return /*#__PURE__*/React.createElement("div", {
@@ -4417,16 +4493,22 @@ function TabPager({
         scrollStore.current[k] = e.currentTarget.scrollTop;
       },
       style: {
-        flex: "0 0 100%",
-        width: "100%",
-        height: "100%",
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         overflowY: "auto",
         overscrollBehaviorY: "contain",
         touchAction: "pan-y",
-        paddingBottom: 20
+        paddingBottom: 20,
+        willChange: "transform",
+        backfaceVisibility: "hidden"
       }
-    }, show ? panes[k] : null);
-  })));
+    }, show ? /*#__PURE__*/React.createElement(PaneBody, {
+      el: panes[k]
+    }) : null);
+  }));
 }
 
 // ─── SESSION DATA WITH IMAGES ─────────────────────────────────────────────────
