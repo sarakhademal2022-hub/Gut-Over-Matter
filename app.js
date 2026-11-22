@@ -6262,17 +6262,53 @@ const TESTERS = [{
 }];
 const MISSING = [{
   q: "Nobody explained that stress physically changes the gut, not just the mood.",
-  who: "Survey respondent · University student"
+  who: "Survey respondent",
+  lesson: "What Happens During a Flare"
 }, {
   q: "I wish someone had told me food was not the whole story much earlier.",
-  who: "Survey respondent · 28, IBS for 4 years"
+  who: "Survey respondent",
+  lesson: "Why Some Days Are Fine and Some Are Not"
 }, {
   q: "I did not know there were options beyond cutting things out. Restriction was all I had.",
-  who: "Survey respondent · Perimenopausal, outlet symptoms"
+  who: "Survey respondent",
+  lesson: "What Actually Helps, The Evidence"
 }, {
   q: "It would have helped so much to know my gut and brain were one system, not two separate problems.",
-  who: "Survey respondent · Post-infectious IBS"
+  who: "Survey respondent",
+  lesson: "The Gut-Brain Axis"
 }];
+
+// Small green line under a survey quote that opens the matching Grow Your Gut IQ lesson.
+function LessonLink({
+  title,
+  go,
+  size = 11.5
+}) {
+  const t = LEARN_TOPICS.find(x => x.title === title);
+  if (!t || !go) return null;
+  const s = t.sessions[t.sessionIdx];
+  return /*#__PURE__*/React.createElement("button", {
+    onPointerDown: () => gomPreload(s.img),
+    onClick: () => go("session", {
+      session: s,
+      color: t.color
+    }),
+    style: {
+      display: "block",
+      background: "none",
+      border: "none",
+      padding: "2px 0",
+      marginTop: 7,
+      textAlign: "left",
+      cursor: "pointer",
+      fontSize: size,
+      fontWeight: 600,
+      color: C.forest,
+      lineHeight: 1.4,
+      fontFamily: "inherit"
+    }
+  }, "More in ", /*#__PURE__*/React.createElement("em", null, "Learn: ", title), " ›");
+}
 
 // ─── TOOLS ────────────────────────────────────────────────────────────────────
 const TOOLS = [{
@@ -7763,7 +7799,9 @@ function App() {
       learn: /*#__PURE__*/React.createElement(LearnTab, {
         go: go
       }),
-      support: /*#__PURE__*/React.createElement(SupportTab, null)
+      support: /*#__PURE__*/React.createElement(SupportTab, {
+        go: go
+      })
     }
   }), /*#__PURE__*/React.createElement(Nav, {
     tab: tab,
@@ -7932,7 +7970,11 @@ function HomeTab({
       color: C.charcoal,
       opacity: .42
     }
-  }, c.who))))), /*#__PURE__*/React.createElement("div", {
+  }, c.who), /*#__PURE__*/React.createElement(LessonLink, {
+    title: c.lesson,
+    go: go,
+    size: 11
+  }))))), /*#__PURE__*/React.createElement("div", {
     style: {
       margin: "18px 18px 0",
       background: `linear-gradient(135deg,${C.clay},${C.clayLight})`,
@@ -9547,7 +9589,9 @@ function SuggestionBox() {
   })), submitted));
 }
 const ABOUT_TEXT = "Gut Over Matter is a knowledge translation tool that explains irritable bowel syndrome (IBS) as a disorder of gut-brain interaction, in plain language. It turns peer-reviewed research and clinical guidelines into guided programs, nervous system regulation tools, science explainers, and Gut IQ, an assistant that answers questions about the science. Everything you save stays on your own device. It is an educational resource and does not replace care from a clinician.";
-function SupportTab() {
+function SupportTab({
+  go
+}) {
   return /*#__PURE__*/React.createElement("div", {
     className: "gom-stagger",
     style: {
@@ -9612,7 +9656,10 @@ function SupportTab() {
       color: C.charcoal,
       opacity: .42
     }
-  }, c.who))), /*#__PURE__*/React.createElement("p", {
+  }, c.who), /*#__PURE__*/React.createElement(LessonLink, {
+    title: c.lesson,
+    go: go
+  }))), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 10,
       letterSpacing: 2,
